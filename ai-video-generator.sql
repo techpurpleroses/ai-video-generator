@@ -1154,9 +1154,9 @@ CREATE FUNCTION public.get_user_snapshot(p_org_id uuid, p_profile_id uuid) RETUR
 
     'video_projects', coalesce((select jsonb_agg(to_jsonb(vp)) from public.video_projects vp where vp.org_id = p_org_id), '[]'::jsonb),
     'video_assets', coalesce((select jsonb_agg(to_jsonb(va)) from public.video_assets va where va.org_id = p_org_id), '[]'::jsonb),
-    'video_generations', coalesce((select jsonb_agg(to_jsonb(vg)) from public.video_generations vg where vg.org_id = p_org_id), '[]'::jsonb),
+    'media_generations', coalesce((select jsonb_agg(to_jsonb(vg)) from public.media_generations vg where vg.org_id = p_org_id), '[]'::jsonb),
     'render_jobs', coalesce((select jsonb_agg(to_jsonb(rj)) from public.render_jobs rj where rj.org_id = p_org_id), '[]'::jsonb),
-    'video_outputs', coalesce((select jsonb_agg(to_jsonb(vo)) from public.video_outputs vo where vo.org_id = p_org_id), '[]'::jsonb),
+    'media_outputs', coalesce((select jsonb_agg(to_jsonb(vo)) from public.media_outputs vo where vo.org_id = p_org_id), '[]'::jsonb),
     'files', coalesce((select jsonb_agg(to_jsonb(fi)) from public.files fi where fi.org_id = p_org_id and fi.profile_id = p_profile_id), '[]'::jsonb),
     'file_attachments', coalesce((select jsonb_agg(to_jsonb(fa)) from public.file_attachments fa where fa.org_id = p_org_id), '[]'::jsonb)
   );
@@ -4446,11 +4446,11 @@ CREATE TABLE public.video_assets (
 
 --
 -- TOC entry 5003 (class 1259 OID 99003)
--- Name: video_generations; Type: TABLE; Schema: public; Owner: -
+-- Name: media_generations; Type: TABLE; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE TABLE public.video_generations (
+CREATE TABLE public.media_generations (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     org_id uuid NOT NULL,
     project_id uuid,
@@ -4461,12 +4461,14 @@ CREATE TABLE public.video_generations (
     provider text NOT NULL,
     model text NOT NULL,
     status text NOT NULL,
+    media_type text DEFAULT 'video'::text NOT NULL,
     error_code text,
     error_message text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     deleted_at timestamp with time zone,
-    CONSTRAINT video_generations_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'canceled'::text])))
+    CONSTRAINT media_generations_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'canceled'::text]))),
+    CONSTRAINT media_generations_media_type_check CHECK ((media_type = ANY (ARRAY['video'::text, 'image'::text, 'audio'::text, 'other'::text])))
 );
 
 
@@ -4501,11 +4503,11 @@ CREATE TABLE public.render_jobs (
 
 --
 -- TOC entry 5005 (class 1259 OID 99005)
--- Name: video_outputs; Type: TABLE; Schema: public; Owner: -
+-- Name: media_outputs; Type: TABLE; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE TABLE public.video_outputs (
+CREATE TABLE public.media_outputs (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     org_id uuid NOT NULL,
     generation_id uuid,
@@ -4515,7 +4517,7 @@ CREATE TABLE public.video_outputs (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     deleted_at timestamp with time zone,
-    CONSTRAINT video_outputs_output_type_check CHECK ((output_type = ANY (ARRAY['video'::text, 'image'::text, 'audio'::text, 'zip'::text, 'other'::text])))
+    CONSTRAINT media_outputs_output_type_check CHECK ((output_type = ANY (ARRAY['video'::text, 'image'::text, 'audio'::text, 'zip'::text, 'other'::text])))
 );
 
 
@@ -7581,12 +7583,12 @@ ALTER TABLE ONLY public.video_assets
 --
 -- TOC entry 5008 (class 2606 OID 99008)
 -- Dependencies: 5003
--- Name: video_generations video_generations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: media_generations media_generations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_generations
-    ADD CONSTRAINT video_generations_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.media_generations
+    ADD CONSTRAINT media_generations_pkey PRIMARY KEY (id);
 
 
 --
@@ -7603,12 +7605,12 @@ ALTER TABLE ONLY public.render_jobs
 --
 -- TOC entry 5010 (class 2606 OID 99010)
 -- Dependencies: 5005
--- Name: video_outputs video_outputs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: media_outputs media_outputs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_outputs
-    ADD CONSTRAINT video_outputs_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.media_outputs
+    ADD CONSTRAINT media_outputs_pkey PRIMARY KEY (id);
 
 
 --
@@ -8774,31 +8776,31 @@ CREATE INDEX video_assets_file_id_idx ON public.video_assets USING btree (file_i
 --
 -- TOC entry 5023 (class 1259 OID 99023)
 -- Dependencies: 5003 5003
--- Name: video_generations_org_created_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: media_generations_org_created_idx; Type: INDEX; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE INDEX video_generations_org_created_idx ON public.video_generations USING btree (org_id, created_at DESC);
+CREATE INDEX media_generations_org_created_idx ON public.media_generations USING btree (org_id, created_at DESC);
 
 
 --
 -- TOC entry 5024 (class 1259 OID 99024)
 -- Dependencies: 5003 5003 5003
--- Name: video_generations_org_status_created_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: media_generations_org_status_created_idx; Type: INDEX; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE INDEX video_generations_org_status_created_idx ON public.video_generations USING btree (org_id, status, created_at DESC);
+CREATE INDEX media_generations_org_status_created_idx ON public.media_generations USING btree (org_id, status, created_at DESC);
 
 
 --
 -- TOC entry 5025 (class 1259 OID 99025)
 -- Dependencies: 5003 5003
--- Name: video_generations_project_created_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: media_generations_project_created_idx; Type: INDEX; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE INDEX video_generations_project_created_idx ON public.video_generations USING btree (project_id, created_at DESC);
+CREATE INDEX media_generations_project_created_idx ON public.media_generations USING btree (project_id, created_at DESC);
 
 
 --
@@ -8854,41 +8856,41 @@ CREATE UNIQUE INDEX render_jobs_org_idempotency_key_unique ON public.render_jobs
 --
 -- TOC entry 5031 (class 1259 OID 99031)
 -- Dependencies: 5005 5005
--- Name: video_outputs_org_created_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: media_outputs_org_created_idx; Type: INDEX; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE INDEX video_outputs_org_created_idx ON public.video_outputs USING btree (org_id, created_at DESC);
+CREATE INDEX media_outputs_org_created_idx ON public.media_outputs USING btree (org_id, created_at DESC);
 
 
 --
 -- TOC entry 5032 (class 1259 OID 99032)
 -- Dependencies: 5005 5005
--- Name: video_outputs_generation_created_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: media_outputs_generation_created_idx; Type: INDEX; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE INDEX video_outputs_generation_created_idx ON public.video_outputs USING btree (generation_id, created_at DESC);
+CREATE INDEX media_outputs_generation_created_idx ON public.media_outputs USING btree (generation_id, created_at DESC);
 
 
 --
 -- TOC entry 5033 (class 1259 OID 99033)
 -- Dependencies: 5005
--- Name: video_outputs_job_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: media_outputs_job_id_idx; Type: INDEX; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE INDEX video_outputs_job_id_idx ON public.video_outputs USING btree (job_id);
+CREATE INDEX media_outputs_job_id_idx ON public.media_outputs USING btree (job_id);
 
 
 --
 -- TOC entry 5034 (class 1259 OID 99034)
 -- Dependencies: 5005
--- Name: video_outputs_file_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: media_outputs_file_id_idx; Type: INDEX; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE INDEX video_outputs_file_id_idx ON public.video_outputs USING btree (file_id);
+CREATE INDEX media_outputs_file_id_idx ON public.media_outputs USING btree (file_id);
 
 
 --
@@ -9104,11 +9106,11 @@ CREATE TRIGGER video_projects_updated_at BEFORE UPDATE ON public.video_projects 
 --
 -- TOC entry 5038 (class 2620 OID 99058)
 -- Dependencies: 5003 499
--- Name: video_generations video_generations_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: media_generations media_generations_updated_at; Type: TRIGGER; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE TRIGGER video_generations_updated_at BEFORE UPDATE ON public.video_generations FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+CREATE TRIGGER media_generations_updated_at BEFORE UPDATE ON public.media_generations FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 
 --
@@ -9912,34 +9914,34 @@ ALTER TABLE ONLY public.video_assets
 --
 -- TOC entry 5026 (class 2606 OID 99046)
 -- Dependencies: 4324 5003 392
--- Name: video_generations video_generations_org_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: media_generations media_generations_org_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_generations
-    ADD CONSTRAINT video_generations_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.media_generations
+    ADD CONSTRAINT media_generations_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
 
 
 --
 -- TOC entry 5027 (class 2606 OID 99047)
 -- Dependencies: 5001 5003 5001
--- Name: video_generations video_generations_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: media_generations media_generations_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_generations
-    ADD CONSTRAINT video_generations_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.video_projects(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.media_generations
+    ADD CONSTRAINT media_generations_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.video_projects(id) ON DELETE SET NULL;
 
 
 --
 -- TOC entry 5028 (class 2606 OID 99048)
 -- Dependencies: 4333 5003 393
--- Name: video_generations video_generations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: media_generations media_generations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_generations
-    ADD CONSTRAINT video_generations_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id);
+ALTER TABLE ONLY public.media_generations
+    ADD CONSTRAINT media_generations_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id);
 
 
 --
@@ -9961,51 +9963,51 @@ ALTER TABLE ONLY public.render_jobs
 --
 
 ALTER TABLE ONLY public.render_jobs
-    ADD CONSTRAINT render_jobs_generation_id_fkey FOREIGN KEY (generation_id) REFERENCES public.video_generations(id) ON DELETE CASCADE;
+    ADD CONSTRAINT render_jobs_generation_id_fkey FOREIGN KEY (generation_id) REFERENCES public.media_generations(id) ON DELETE CASCADE;
 
 
 --
 -- TOC entry 5031 (class 2606 OID 99051)
 -- Dependencies: 4324 5005 392
--- Name: video_outputs video_outputs_org_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: media_outputs media_outputs_org_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_outputs
-    ADD CONSTRAINT video_outputs_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.media_outputs
+    ADD CONSTRAINT media_outputs_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
 
 
 --
 -- TOC entry 5032 (class 2606 OID 99052)
 -- Dependencies: 5003 5005 5003
--- Name: video_outputs video_outputs_generation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: media_outputs media_outputs_generation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_outputs
-    ADD CONSTRAINT video_outputs_generation_id_fkey FOREIGN KEY (generation_id) REFERENCES public.video_generations(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.media_outputs
+    ADD CONSTRAINT media_outputs_generation_id_fkey FOREIGN KEY (generation_id) REFERENCES public.media_generations(id) ON DELETE CASCADE;
 
 
 --
 -- TOC entry 5033 (class 2606 OID 99053)
 -- Dependencies: 5004 5005 5004
--- Name: video_outputs video_outputs_job_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: media_outputs media_outputs_job_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_outputs
-    ADD CONSTRAINT video_outputs_job_id_fkey FOREIGN KEY (job_id) REFERENCES public.render_jobs(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.media_outputs
+    ADD CONSTRAINT media_outputs_job_id_fkey FOREIGN KEY (job_id) REFERENCES public.render_jobs(id) ON DELETE SET NULL;
 
 
 --
 -- TOC entry 5034 (class 2606 OID 99054)
 -- Dependencies: 407 5005 4400
--- Name: video_outputs video_outputs_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: media_outputs media_outputs_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE ONLY public.video_outputs
-    ADD CONSTRAINT video_outputs_file_id_fkey FOREIGN KEY (file_id) REFERENCES public.files(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.media_outputs
+    ADD CONSTRAINT media_outputs_file_id_fkey FOREIGN KEY (file_id) REFERENCES public.files(id) ON DELETE SET NULL;
 
 
 --
@@ -10016,7 +10018,7 @@ ALTER TABLE ONLY public.video_outputs
 --
 
 ALTER TABLE ONLY public.usage_events
-    ADD CONSTRAINT usage_events_generation_id_fkey FOREIGN KEY (generation_id) REFERENCES public.video_generations(id) ON DELETE SET NULL;
+    ADD CONSTRAINT usage_events_generation_id_fkey FOREIGN KEY (generation_id) REFERENCES public.media_generations(id) ON DELETE SET NULL;
 
 
 --
@@ -10403,41 +10405,41 @@ CREATE POLICY "Admins can delete video assets" ON public.video_assets FOR DELETE
 --
 -- TOC entry 5048 (class 3256 OID 99073)
 -- Dependencies: 486 5003 5003
--- Name: video_generations Members can view video generations; Type: POLICY; Schema: public; Owner: -
+-- Name: media_generations Members can view media generations; Type: POLICY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE POLICY "Members can view video generations" ON public.video_generations FOR SELECT USING (public.is_org_member(org_id));
+CREATE POLICY "Members can view media generations" ON public.media_generations FOR SELECT USING (public.is_org_member(org_id));
 
 
 --
 -- TOC entry 5049 (class 3256 OID 99074)
 -- Dependencies: 486 5003 5003
--- Name: video_generations Members can insert video generations; Type: POLICY; Schema: public; Owner: -
+-- Name: media_generations Members can insert media generations; Type: POLICY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE POLICY "Members can insert video generations" ON public.video_generations FOR INSERT WITH CHECK (public.is_org_member(org_id));
+CREATE POLICY "Members can insert media generations" ON public.media_generations FOR INSERT WITH CHECK (public.is_org_member(org_id));
 
 
 --
 -- TOC entry 5050 (class 3256 OID 99075)
 -- Dependencies: 467 5003 5003
--- Name: video_generations Admins can update video generations; Type: POLICY; Schema: public; Owner: -
+-- Name: media_generations Admins can update media generations; Type: POLICY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE POLICY "Admins can update video generations" ON public.video_generations FOR UPDATE USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+CREATE POLICY "Admins can update media generations" ON public.media_generations FOR UPDATE USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
 
 
 --
 -- TOC entry 5051 (class 3256 OID 99076)
 -- Dependencies: 467 5003
--- Name: video_generations Admins can delete video generations; Type: POLICY; Schema: public; Owner: -
+-- Name: media_generations Admins can delete media generations; Type: POLICY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE POLICY "Admins can delete video generations" ON public.video_generations FOR DELETE USING (public.is_org_admin(org_id));
+CREATE POLICY "Admins can delete media generations" ON public.media_generations FOR DELETE USING (public.is_org_admin(org_id));
 
 
 --
@@ -10483,41 +10485,41 @@ CREATE POLICY "Admins can delete render jobs" ON public.render_jobs FOR DELETE U
 --
 -- TOC entry 5056 (class 3256 OID 99081)
 -- Dependencies: 486 5005 5005
--- Name: video_outputs Members can view video outputs; Type: POLICY; Schema: public; Owner: -
+-- Name: media_outputs Members can view media outputs; Type: POLICY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE POLICY "Members can view video outputs" ON public.video_outputs FOR SELECT USING (public.is_org_member(org_id));
+CREATE POLICY "Members can view media outputs" ON public.media_outputs FOR SELECT USING (public.is_org_member(org_id));
 
 
 --
 -- TOC entry 5057 (class 3256 OID 99082)
 -- Dependencies: 467 5005 5005
--- Name: video_outputs Admins can insert video outputs; Type: POLICY; Schema: public; Owner: -
+-- Name: media_outputs Admins can insert media outputs; Type: POLICY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE POLICY "Admins can insert video outputs" ON public.video_outputs FOR INSERT WITH CHECK (public.is_org_admin(org_id));
+CREATE POLICY "Admins can insert media outputs" ON public.media_outputs FOR INSERT WITH CHECK (public.is_org_admin(org_id));
 
 
 --
 -- TOC entry 5058 (class 3256 OID 99083)
 -- Dependencies: 467 5005 5005
--- Name: video_outputs Admins can update video outputs; Type: POLICY; Schema: public; Owner: -
+-- Name: media_outputs Admins can update media outputs; Type: POLICY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE POLICY "Admins can update video outputs" ON public.video_outputs FOR UPDATE USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+CREATE POLICY "Admins can update media outputs" ON public.media_outputs FOR UPDATE USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
 
 
 --
 -- TOC entry 5059 (class 3256 OID 99084)
 -- Dependencies: 467 5005
--- Name: video_outputs Admins can delete video outputs; Type: POLICY; Schema: public; Owner: -
+-- Name: media_outputs Admins can delete media outputs; Type: POLICY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-CREATE POLICY "Admins can delete video outputs" ON public.video_outputs FOR DELETE USING (public.is_org_admin(org_id));
+CREATE POLICY "Admins can delete media outputs" ON public.media_outputs FOR DELETE USING (public.is_org_admin(org_id));
 
 
 --
@@ -10607,11 +10609,11 @@ ALTER TABLE public.video_assets ENABLE ROW LEVEL SECURITY;
 --
 -- TOC entry 5037 (class 0 OID 99062)
 -- Dependencies: 5003
--- Name: video_generations; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: media_generations; Type: ROW SECURITY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE public.video_generations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.media_generations ENABLE ROW LEVEL SECURITY;
 
 --
 -- TOC entry 5038 (class 0 OID 99063)
@@ -10625,11 +10627,11 @@ ALTER TABLE public.render_jobs ENABLE ROW LEVEL SECURITY;
 --
 -- TOC entry 5039 (class 0 OID 99064)
 -- Dependencies: 5005
--- Name: video_outputs; Type: ROW SECURITY; Schema: public; Owner: -
+-- Name: media_outputs; Type: ROW SECURITY; Schema: public; Owner: -
 -- Data Pos: 0
 --
 
-ALTER TABLE public.video_outputs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.media_outputs ENABLE ROW LEVEL SECURITY;
 
 --
 -- TOC entry 4829 (class 0 OID 73764)
