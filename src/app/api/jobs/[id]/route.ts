@@ -1,13 +1,47 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { HttpError, requireUserContext } from "@/lib/supabase/context";
 import { mapJobRow } from "@/lib/server/jobs";
 
+type JobRow = {
+  id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  last_error?: string | null;
+  generation?: {
+    prompt?: string | null;
+    negative_prompt?: string | null;
+    params?: Record<string, unknown> | null;
+    error_message?: string | null;
+  } | null;
+  outputs?: {
+    file?: {
+      bucket?: string | null;
+      path?: string | null;
+      is_public?: boolean | null;
+    } | null;
+  }[] | null;
+};
+
+function isJobRow(x: unknown): x is JobRow {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.id === "string" &&
+    typeof o.status === "string" &&
+    typeof o.created_at === "string" &&
+    typeof o.updated_at === "string"
+  );
+}
+
 export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await paramsPromise;
     const { admin, orgId } = await requireUserContext();
+
     const { data, error } = await admin
       .from("render_jobs")
       .select(
@@ -19,7 +53,7 @@ export async function GET(
       .eq("id", params.id)
       .maybeSingle();
 
-    if (error || !data) {
+    if (error || !data || !isJobRow(data)) {
       return NextResponse.json({ message: "Not found" }, { status: 404 });
     }
 

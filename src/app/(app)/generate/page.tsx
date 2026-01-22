@@ -5,13 +5,16 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/common/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { productConfig } from "@/lib/config/product";
-import { PromptBuilder } from "@/features/video/components/prompt-builder";
+import {
+  PromptBuilder,
+  type PromptValues,
+} from "@/features/video/components/prompt-builder";
 import { CostEstimator } from "@/features/video/components/cost-estimator";
 import { JobQueuePanel } from "@/features/video/components/job-queue-panel";
 import { useCreateGeneration } from "@/features/video/hooks";
 import type { GeneratePayload } from "@/features/video/types";
 
-const defaultSettings = {
+const defaultSettings: PromptValues = {
   prompt: "",
   negativePrompt: "",
   stylePreset: productConfig.stylePresets[0],
@@ -23,7 +26,9 @@ const defaultSettings = {
 };
 
 export default function GeneratePage() {
-  const [activeMode, setActiveMode] = useState(productConfig.generatorModes[0].key);
+  const [activeMode, setActiveMode] = useState<string>(
+    productConfig.generatorModes[0].key
+  );
   const [settings, setSettings] = useState(defaultSettings);
   const { mutateAsync, isPending } = useCreateGeneration();
 

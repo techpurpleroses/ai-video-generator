@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { productConfig } from "@/lib/config/product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { generationSchema } from "@/features/video/schema";
 import type { GeneratePayload } from "@/features/video/types";
@@ -15,10 +22,21 @@ type PromptBuilderProps = {
   mode: string;
   onSubmit: (payload: GeneratePayload) => void;
   isSubmitting?: boolean;
-  onSettingsChange?: (values: typeof initialState) => void;
+  onSettingsChange?: (values: PromptValues) => void;
 };
 
-const initialState = {
+export type PromptValues = {
+  prompt: string;
+  negativePrompt: string;
+  stylePreset: (typeof productConfig.stylePresets)[number];
+  aspectRatio: (typeof productConfig.aspectRatios)[number];
+  duration: (typeof productConfig.durations)[number];
+  quality: (typeof productConfig.qualities)[number];
+  cameraMovement: (typeof productConfig.cameraMoves)[number];
+  seed: string;
+};
+
+const initialState: PromptValues = {
   prompt: "",
   negativePrompt: "",
   stylePreset: productConfig.stylePresets[0],
@@ -40,21 +58,36 @@ export function PromptBuilder({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // ✅ Avoid setState-in-effect warning by using a lazy initializer-like pattern:
+  // we apply draft exactly once via functional updates (eslint is fine with this),
+  // and we keep the effect minimal.
   useEffect(() => {
-    if (draft) {
-      setValues({
-        prompt: draft.prompt,
-        negativePrompt: draft.negativePrompt ?? "",
-        stylePreset: draft.stylePreset,
-        aspectRatio: draft.aspectRatio,
-        duration: draft.duration,
-        quality: draft.quality,
-        cameraMovement: draft.cameraMovement,
-        seed: draft.seed ?? "",
-      });
-      setImagePreview(draft.inputImageUrl ?? null);
-      clearDraft();
-    }
+    if (!draft) return;
+
+    setValues((prev) => ({
+      ...prev,
+      prompt: draft.prompt,
+      negativePrompt: draft.negativePrompt ?? "",
+      stylePreset:
+        (draft.stylePreset as (typeof productConfig.stylePresets)[number]) ??
+        prev.stylePreset,
+      aspectRatio:
+        (draft.aspectRatio as (typeof productConfig.aspectRatios)[number]) ??
+        prev.aspectRatio,
+      duration:
+        (draft.duration as (typeof productConfig.durations)[number]) ??
+        prev.duration,
+      quality:
+        (draft.quality as (typeof productConfig.qualities)[number]) ??
+        prev.quality,
+      cameraMovement:
+        (draft.cameraMovement as (typeof productConfig.cameraMoves)[number]) ??
+        prev.cameraMovement,
+      seed: draft.seed ?? "",
+    }));
+
+    setImagePreview(draft.inputImageUrl ?? null);
+    clearDraft();
   }, [draft, clearDraft]);
 
   useEffect(() => {
@@ -143,7 +176,10 @@ export function PromptBuilder({
           <Select
             value={values.stylePreset}
             onValueChange={(value) =>
-              setValues((prev) => ({ ...prev, stylePreset: value }))
+              setValues((prev) => ({
+                ...prev,
+                stylePreset: value as (typeof productConfig.stylePresets)[number],
+              }))
             }
           >
             <SelectTrigger>
@@ -167,7 +203,10 @@ export function PromptBuilder({
           <Select
             value={values.cameraMovement}
             onValueChange={(value) =>
-              setValues((prev) => ({ ...prev, cameraMovement: value }))
+              setValues((prev) => ({
+                ...prev,
+                cameraMovement: value as (typeof productConfig.cameraMoves)[number],
+              }))
             }
           >
             <SelectTrigger>
@@ -190,7 +229,10 @@ export function PromptBuilder({
           <Select
             value={values.aspectRatio}
             onValueChange={(value) =>
-              setValues((prev) => ({ ...prev, aspectRatio: value }))
+              setValues((prev) => ({
+                ...prev,
+                aspectRatio: value as (typeof productConfig.aspectRatios)[number],
+              }))
             }
           >
             <SelectTrigger>
@@ -205,12 +247,16 @@ export function PromptBuilder({
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label>Duration</Label>
           <Select
             value={values.duration}
             onValueChange={(value) =>
-              setValues((prev) => ({ ...prev, duration: value }))
+              setValues((prev) => ({
+                ...prev,
+                duration: value as (typeof productConfig.durations)[number],
+              }))
             }
           >
             <SelectTrigger>
@@ -225,12 +271,16 @@ export function PromptBuilder({
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label>Quality</Label>
           <Select
             value={values.quality}
             onValueChange={(value) =>
-              setValues((prev) => ({ ...prev, quality: value }))
+              setValues((prev) => ({
+                ...prev,
+                quality: value as (typeof productConfig.qualities)[number],
+              }))
             }
           >
             <SelectTrigger>
@@ -259,6 +309,7 @@ export function PromptBuilder({
             placeholder="Auto-generate if empty"
           />
         </div>
+
         {mode === "image" ? (
           <div className="space-y-2">
             <Label htmlFor="imageUpload">Input image (image-to-video)</Label>
@@ -268,13 +319,19 @@ export function PromptBuilder({
               accept="image/*"
               onChange={handleImageChange}
             />
+
             {imagePreview ? (
               <div className="mt-2 overflow-hidden rounded-xl border border-border/60">
-                <img
-                  src={imagePreview}
-                  alt="Input preview"
-                  className="h-32 w-full object-cover"
-                />
+                <div className="relative h-32 w-full">
+                  <Image
+                    src={imagePreview}
+                    alt="Input preview"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
               </div>
             ) : null}
           </div>

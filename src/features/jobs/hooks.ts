@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cancelJob, fetchJob, fetchJobs, retryJob } from "./api";
+import type { Job } from "./types"; // adjust if your Job type lives elsewhere
 
 export function useJobs(status?: string) {
   return useQuery({
     queryKey: ["jobs", status ?? "all"],
     queryFn: () => fetchJobs(status),
-    refetchInterval: (data) => {
-      if (!Array.isArray(data)) {
-        return false;
-      }
+    refetchInterval: (query) => {
+      const data = query.state.data as Job[] | undefined;
+      if (!Array.isArray(data)) return false;
       return data.some((job) => job.status === "running") ? 5000 : false;
     },
   });
@@ -18,7 +18,10 @@ export function useJob(id: string) {
   return useQuery({
     queryKey: ["job", id],
     queryFn: () => fetchJob(id),
-    refetchInterval: (data) => (data?.status === "running" ? 4000 : false),
+    refetchInterval: (query) => {
+      const job = query.state.data as Job | undefined;
+      return job?.status === "running" ? 4000 : false;
+    },
   });
 }
 

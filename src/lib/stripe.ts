@@ -11,7 +11,7 @@ export function getStripeClient() {
   }
   if (!cachedStripe) {
     cachedStripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2024-04-10",
+      apiVersion: "2025-12-15.clover",
     });
   }
   return cachedStripe;

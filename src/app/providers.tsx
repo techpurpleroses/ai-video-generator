@@ -24,7 +24,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <QueryClientProvider client={queryClient}>
         {children}
-        <Toaster richColors closeButton />
+        <Toaster />
       </QueryClientProvider>
     </ThemeProvider>
   );

@@ -4,6 +4,8 @@ import { mapMediaRow } from "@/lib/server/library";
 
 const PAGE_SIZE = 6;
 
+type MediaRow = Parameters<typeof mapMediaRow>[0];
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
@@ -11,8 +13,10 @@ export async function GET(request: Request) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
   const cursor = Number(searchParams.get("cursor") ?? 0) || 0;
+
   try {
     const { admin, orgId } = await requireUserContext();
+
     let query = admin
       .from("media_generations")
       .select(
@@ -22,18 +26,17 @@ export async function GET(request: Request) {
       .eq("org_id", orgId)
       .order("created_at", { ascending: false });
 
-    if (from) {
-      query = query.gte("created_at", from);
-    }
-    if (to) {
-      query = query.lte("created_at", to);
-    }
+    if (from) query = query.gte("created_at", from);
+    if (to) query = query.lte("created_at", to);
+
     if (type && type !== "all") {
       const mode = type === "image-to-video" ? "image" : "text";
       query = query.eq("params->>mode", mode);
     }
 
-    const { data, error } = await query.range(cursor, cursor + PAGE_SIZE - 1);
+    const { data, error } = await query
+      .range(cursor, cursor + PAGE_SIZE - 1)
+      .returns<MediaRow[]>();
 
     if (error) {
       return NextResponse.json(
@@ -54,7 +57,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ items, nextCursor });
   } catch (error) {
     if (error instanceof HttpError) {
-      return NextResponse.json({ message: error.message }, { status: error.status });
+      return NextResponse.json(
+        { message: error.message },
+        { status: error.status }
+      );
     }
     return NextResponse.json({ message: "Unable to load library." }, { status: 500 });
   }
